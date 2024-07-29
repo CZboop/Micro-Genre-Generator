@@ -124,14 +124,14 @@ class Finetuner:
             return_attention_mask=False,
         )
 
-        outputs = model.generate(**inputs, max_length=200)
+        outputs = model.generate(**inputs, max_length=200, tokenizer=tokenizer, stop_strings = "|<stop>|")
         text = tokenizer.batch_decode(outputs)[0]
         print(text)
 
     def run(self):
         self._load_data()
         self._load_model()
-        self._fine_tune()
+        # self._fine_tune()
         self._merge_final_model()
 
 
