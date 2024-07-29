@@ -1,20 +1,26 @@
-import pandas as pd
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import re
-from peft import LoraConfig
-from trl import SFTConfig, SFTTrainer
-from datasets import load_dataset
 from typing import Tuple
 
+import pandas as pd
+import torch
+from datasets import load_dataset
+from peft import LoraConfig, PeftModel, get_peft_model
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from trl import SFTConfig, SFTTrainer
+
+
 class Finetuner:
-    def __init__(self, path_to_fine_tuning_data: str, original_model: str = "microsoft/phi-1_5"):
+    def __init__(
+        self, path_to_fine_tuning_data: str, original_model: str = "microsoft/phi-1_5"
+    ):
         self.path_to_fine_tuning_data = path_to_fine_tuning_data
         self.original_model = original_model
 
     def _load_data(self) -> Tuple:
-        self.training_data = load_dataset("csv", data_files=self.path_to_fine_tuning_data, split="train")
+        # NOTE; specifying train split in a dataset that isn't split, but this changes the returned type to dataset not datasetdict, for the methods later
+        self.training_data = load_dataset(
+            "csv", data_files=self.path_to_fine_tuning_data, split="train"
+        )
         train_test_split = self.training_data.train_test_split(test_size=0.2)
         print(train_test_split)
         self.train_data = train_test_split["train"]
@@ -36,6 +42,7 @@ class Finetuner:
 
     def _fine_tune(self):
         # torch.set_default_device("cuda")
+        # NOTE: setting default device cuda can cause error later
         # get layers/modules of the model
         model_modules = str(self.model.modules)
         # find linear layers to pass as target
@@ -54,7 +61,7 @@ class Finetuner:
             task_type="CAUSAL_LM",
         )
         sft_config = SFTConfig(
-            dataset_text_field="seed",
+            dataset_text_field="genre",
             max_seq_length=512,
             output_dir="/tmp",
         )
@@ -67,19 +74,66 @@ class Finetuner:
             args=sft_config,
             peft_config=lora_config,
         )
-
+        self.model.config.use_cache = False
         trainer.train()
-        # TODO: make new model combining pretrained and fine tuned...
-        # TODO: test outputs etc, tweak
+        trainer.save_model("./models/tuned_model")
 
+        tuning_model = get_peft_model(self.model, lora_config)
+        tuning_model.print_trainable_parameters()
 
-    def _save_model(self):
-        pass
+        fine_tuned_model = PeftModel.from_pretrained(
+            tuning_model, "./models/tuned_model"
+        )
+        self.fine_tuned_model = fine_tuned_model
+
+        inputs = self.tokenizer(
+            "0",
+            return_tensors="pt",
+            return_attention_mask=False,
+        )
+
+        outputs = self.fine_tuned_model.generate(**inputs, max_length=200)
+        text = self.tokenizer.batch_decode(outputs)[0]
+        print(text)
+
+        return fine_tuned_model
+
+    def _merge_final_model(self):
+        base_model = AutoModelForCausalLM.from_pretrained(
+            self.original_model,
+            torch_dtype=torch.bfloat16,
+            device_map="auto",
+        )
+
+        tokenizer = AutoTokenizer.from_pretrained(self.original_model)
+        model = PeftModel.from_pretrained(base_model, "./models/tuned_model")
+        model = model.merge_and_unload()
+
+        model.save_pretrained(
+            "./models/final_model", safe_serialization=True, max_shard_size="4GB"
+        )
+
+        model = AutoModelForCausalLM.from_pretrained(
+            "./models/final_model", torch_dtype=torch.bfloat16, device_map="auto"
+        )
+        # tokenizer = AutoTokenizer.from_pretrained("./models/final_model")
+
+        inputs = self.tokenizer(
+            "0",
+            return_tensors="pt",
+            return_attention_mask=False,
+        )
+
+        outputs = model.generate(**inputs, max_length=200)
+        text = tokenizer.batch_decode(outputs)[0]
+        print(text)
 
     def run(self):
         self._load_data()
         self._load_model()
-        model = self._fine_tune()
+        self._fine_tune()
+        self._merge_final_model()
+
 
 if __name__ == "__main__":
     tuner = Finetuner(path_to_fine_tuning_data="./data/micro_genres.csv")
