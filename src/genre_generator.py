@@ -33,13 +33,17 @@ class GenreGenerator:
         except IndexError:
             raise ValueError(f"Invalid output, could not be parsed - {original_output}")
         
-    def _is_output_from_training(self, output: str):
+    def _is_output_from_training(self, output: str) -> bool:
         if not self.path_to_training:
             raise ValueError("Path to training required to validate if model produced exact match to training.")
         training_df = pd.read_csv(self.path_to_training)
         genres_without_seed = [i.split("->")[1].replace("|<stop>|", "").strip() for i in training_df["genre"].tolist()]
         exact_match = output.strip() in genres_without_seed
         return exact_match
+    
+    def _retry_with_new_seed(self, seed: Optional[int]) -> str:
+        new_seed = seed + 1 if seed else random.randrange(1000)
+        return self.generate(new_seed)
 
     def generate(self, seed: int) -> str:
         torch.set_default_device("cuda")
@@ -59,6 +63,8 @@ class GenreGenerator:
         if not self.allow_real_genre:
             is_in_training = self._is_output_from_training(text)
             print(is_in_training)
+            if is_in_training:
+                return self._retry_with_new_seed(seed)
         return text
 
     def __call__(self):
