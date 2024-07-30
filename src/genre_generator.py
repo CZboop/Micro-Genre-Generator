@@ -2,6 +2,8 @@ import random
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from typing import Optional
+import pandas as pd
 
 
 class GenreGenerator:
@@ -9,9 +11,13 @@ class GenreGenerator:
         self,
         path_to_tuned_model: str = "./models/final_model",
         tokenizer_name: str = "microsoft/phi-1_5",
+        allow_real_genre: bool = False,
+        path_to_training: Optional[str] = None
     ):
         self.path_to_tuned_model = path_to_tuned_model
         self.tokenizer_name = tokenizer_name
+        self.allow_real_genre = allow_real_genre
+        self.path_to_training = path_to_training
 
     def _load_model(self) -> None:
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -20,9 +26,20 @@ class GenreGenerator:
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
 
     def _parse_output(self, original_output: str) -> str:
-        # TODO; fix parsing issues (seems when there's a dash in output?)
-        parsed_output = original_output.split("->")[1].replace("|<stop>|", "")
-        return parsed_output
+        # TODO: try and handle more output formats? e.g. got number, genre|<stop>|
+        try:
+            parsed_output = original_output.split("->")[1].replace("|<stop>|", "")
+            return parsed_output
+        except IndexError:
+            raise ValueError(f"Invalid output, could not be parsed - {original_output}")
+        
+    def _is_output_from_training(self, output: str):
+        if not self.path_to_training:
+            raise ValueError("Path to training required to validate if model produced exact match to training.")
+        training_df = pd.read_csv(self.path_to_training)
+        genres_without_seed = [i.split("->")[1].replace("|<stop>|", "").strip() for i in training_df["genre"].tolist()]
+        exact_match = output.strip() in genres_without_seed
+        return exact_match
 
     def generate(self, seed: int) -> str:
         torch.set_default_device("cuda")
@@ -38,16 +55,18 @@ class GenreGenerator:
             **inputs, max_length=200, tokenizer=self.tokenizer, stop_strings="|<stop>|"
         )
         raw_output = self.tokenizer.batch_decode(outputs)[0]
-        print(raw_output)
         text = self._parse_output(raw_output)
+        if not self.allow_real_genre:
+            is_in_training = self._is_output_from_training(text)
+            print(is_in_training)
         return text
 
     def __call__(self):
         random_seed = random.randrange(1000)
-        self.generate(random_seed)
-
+        genre = self.generate(random_seed)
+        return genre
 
 if __name__ == "__main__":
-    generator = GenreGenerator()
+    generator = GenreGenerator(path_to_training="./data/micro_genres.csv")
     print(generator.generate(47))
     print(generator())
