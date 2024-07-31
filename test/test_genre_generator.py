@@ -2,6 +2,10 @@ import unittest
 from parameterized import parameterized
 from src.genre_generator import GenreGenerator
 from typing import Optional
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 
 class TestGenreGenerator(unittest.TestCase):
@@ -59,21 +63,37 @@ class TestGenreGenerator(unittest.TestCase):
         self.assertTrue(hasattr(generator, "model"))
         self.assertTrue(hasattr(generator, "tokenizer"))
 
-# TODO: generate requires valid output format, so will likely need to test with actual model
-    # @parameterized.expand(
-    #     [
-    #         ((1,)),
-    #         ((None,)),
-    #     ]
-    # )
-    # def test_retry_with_new_seed_generates_new_string_if_valid_or_no_input(self, input: Optional[int]):
-    #     generator = GenreGenerator(path_to_tuned_model = "microsoft/phi-1_5", 
-    #                                tokenizer_name = "microsoft/phi-1_5", 
-    #                                path_to_training="./test/test_data/training_data.csv")
-    #     generator._load_model()
-    #     output = generator._retry_with_new_seed(input)
+    # NOTE: invokes generate which requires valid output format, so testing actual model
+    @parameterized.expand(
+        [
+            ((1,)),
+            ((None,)),
+        ]
+    )
+    def test_retry_with_new_seed_generates_new_string_if_valid_or_no_input(self, input: Optional[int]):
+        generator = GenreGenerator(path_to_tuned_model = os.environ['REPO_ID'], 
+                                   tokenizer_name = "microsoft/phi-1_5", 
+                                   path_to_training="./test/test_data/training_data.csv")
+        generator._load_model()
+        output = generator._retry_with_new_seed(input)
 
-    #     self.assertIsInstance(output, str)
+        self.assertIsInstance(output, str)
+
+    @parameterized.expand(
+        [
+            ((1,)),
+            ((200,)),
+            (("332",)),
+        ]
+    )
+    def test_generate_from_number_input_create_valid_outputs(self, input: int):
+        generator = GenreGenerator(path_to_tuned_model = os.environ['REPO_ID'], 
+                                   tokenizer_name = "microsoft/phi-1_5", 
+                                   path_to_training="./test/test_data/training_data.csv")
+        generator._load_model()
+        output = generator.generate(input)
+
+        self.assertIsInstance(output, str)
 
 
 if __name__ == "__main__":
