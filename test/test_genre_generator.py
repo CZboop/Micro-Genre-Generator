@@ -67,13 +67,13 @@ class TestGenreGenerator(unittest.TestCase):
         self.assertTrue(hasattr(generator, "tokenizer"))
 
     # NOTE: invokes generate which requires valid output format, so testing actual model
-    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     @parameterized.expand(
         [
             ((1,)),
             ((None,)),
         ]
     )
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     def test_retry_with_new_seed_generates_new_string_if_valid_or_no_input(self, input: Optional[int]):
         generator = GenreGenerator(path_to_tuned_model = os.environ['REPO_ID'], 
                                    tokenizer_name = "microsoft/phi-1_5", 
@@ -83,7 +83,6 @@ class TestGenreGenerator(unittest.TestCase):
 
         self.assertIsInstance(output, str)
 
-    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     @parameterized.expand(
         [
             ((1,)),
@@ -91,6 +90,7 @@ class TestGenreGenerator(unittest.TestCase):
             (("332",)),
         ]
     )
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     def test_generate_from_number_input_create_valid_outputs(self, input: int):
         generator = GenreGenerator(path_to_tuned_model = os.environ['REPO_ID'], 
                                    tokenizer_name = "microsoft/phi-1_5", 
