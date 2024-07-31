@@ -4,3 +4,5 @@
 /src/scraper.py
 /src/models
 /TODO.md
+**/__pycache__
+**/.coverage

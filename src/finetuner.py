@@ -22,7 +22,7 @@ class Finetuner:
             "csv", data_files=self.path_to_fine_tuning_data, split="train"
         )
         train_test_split = self.training_data.train_test_split(test_size=0.2)
-        print(train_test_split)
+
         self.train_data = train_test_split["train"]
         self.test_data = train_test_split["test"]
         return self.train_data, self.test_data
@@ -86,16 +86,6 @@ class Finetuner:
         )
         self.fine_tuned_model = fine_tuned_model
 
-        inputs = self.tokenizer(
-            "0",
-            return_tensors="pt",
-            return_attention_mask=False,
-        )
-
-        outputs = self.fine_tuned_model.generate(**inputs, max_length=200)
-        text = self.tokenizer.batch_decode(outputs)[0]
-        print(text)
-
         return fine_tuned_model
 
     def _merge_final_model(self):
@@ -105,7 +95,6 @@ class Finetuner:
             device_map="auto",
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(self.original_model)
         model = PeftModel.from_pretrained(base_model, "./models/tuned_model")
         model = model.merge_and_unload()
 
@@ -113,25 +102,10 @@ class Finetuner:
             "./models/final_model", safe_serialization=True, max_shard_size="4GB"
         )
 
-        model = AutoModelForCausalLM.from_pretrained(
-            "./models/final_model", torch_dtype=torch.bfloat16, device_map="auto"
-        )
-        # tokenizer = AutoTokenizer.from_pretrained("./models/final_model")
-
-        inputs = self.tokenizer(
-            "0",
-            return_tensors="pt",
-            return_attention_mask=False,
-        )
-
-        outputs = model.generate(**inputs, max_length=200, tokenizer=tokenizer, stop_strings = "|<stop>|")
-        text = tokenizer.batch_decode(outputs)[0]
-        print(text)
-
     def run(self):
         self._load_data()
         self._load_model()
-        # self._fine_tune()
+        self._fine_tune()
         self._merge_final_model()
 
 

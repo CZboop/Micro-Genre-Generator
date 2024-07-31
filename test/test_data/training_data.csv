@@ -1,0 +1,12 @@
+,genre
+0,4->musical genre|<stop>|
+1,2->genre of music|<stop>|
+2,5->type of music|<stop>|
+3,9->musical category|<stop>|
+4,4->category of music|<stop>|
+5,2->class of music|<stop>|
+6,7->musical class|<stop>|
+7,7->musical type|<stop>|
+8,1->genre example|<stop>|
+9,4->example of genre|<stop>|
+10,0->music genre|<stop>|
