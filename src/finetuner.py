@@ -7,6 +7,8 @@ from datasets import load_dataset
 from peft import LoraConfig, PeftModel, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl import SFTConfig, SFTTrainer
+import os
+from dotenv import load_dotenv
 
 
 class Finetuner:
@@ -15,6 +17,7 @@ class Finetuner:
     ):
         self.path_to_fine_tuning_data = path_to_fine_tuning_data
         self.original_model = original_model
+        load_dotenv()
 
     def _load_data(self) -> Tuple:
         # NOTE; specifying train split in a dataset that isn't split, but this changes the returned type to dataset not datasetdict, for the methods later
@@ -101,12 +104,18 @@ class Finetuner:
         model.save_pretrained(
             "./models/final_model", safe_serialization=True, max_shard_size="4GB"
         )
+        self.final_merged_model = model
+
+    def _push_model_to_hub(self):
+        # NOTE: need to be logged in to HF CLI
+        self.final_merged_model.push_to_hub(repo_id=os.environ['REPO_ID'], private=True)
 
     def run(self):
         self._load_data()
         self._load_model()
-        self._fine_tune()
+        # self._fine_tune()
         self._merge_final_model()
+        self._push_model_to_hub()
 
 
 if __name__ == "__main__":
