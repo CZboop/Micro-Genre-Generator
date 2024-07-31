@@ -4,8 +4,10 @@ from src.genre_generator import GenreGenerator
 from typing import Optional
 from dotenv import load_dotenv
 import os
+import pytest
 
 load_dotenv()
+IN_GITHUB_ACTIONS = os.getenv("GITHUB_ACTIONS") == "true"
 
 
 class TestGenreGenerator(unittest.TestCase):
@@ -54,6 +56,7 @@ class TestGenreGenerator(unittest.TestCase):
 
         self.assertEqual(real_bool, expected_bool)
 
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     def test_load_model_sets_model_and_tokenizer(self):
         generator = GenreGenerator(path_to_tuned_model = "microsoft/phi-1_5", 
                                    tokenizer_name = "microsoft/phi-1_5", 
@@ -64,6 +67,7 @@ class TestGenreGenerator(unittest.TestCase):
         self.assertTrue(hasattr(generator, "tokenizer"))
 
     # NOTE: invokes generate which requires valid output format, so testing actual model
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     @parameterized.expand(
         [
             ((1,)),
@@ -79,6 +83,7 @@ class TestGenreGenerator(unittest.TestCase):
 
         self.assertIsInstance(output, str)
 
+    @pytest.mark.skipif(IN_GITHUB_ACTIONS, reason="Needs CUDA")
     @parameterized.expand(
         [
             ((1,)),
