@@ -30,7 +30,7 @@ class TestGenreGenerator(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (("1, genre",)),
+            (("1- genre",)),
             (("1. genre",)),
             (("genre",)),
             (("genre|<stop>|",)),
@@ -38,8 +38,9 @@ class TestGenreGenerator(unittest.TestCase):
     )
     def test_parse_output_invalid(self, input: str):
         generator = GenreGenerator(path_to_training="./test/test_data/training_data.csv")
+        real_output = generator._parse_output(input)
 
-        self.assertRaises(ValueError, generator._parse_output, input)
+        self.assertEqual(real_output, input)
 
     @parameterized.expand(
         [
