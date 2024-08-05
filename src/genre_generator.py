@@ -1,9 +1,9 @@
 import random
+from typing import Optional
 
+import pandas as pd
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from typing import Optional
-import pandas as pd
 
 
 class GenreGenerator:
@@ -12,7 +12,7 @@ class GenreGenerator:
         path_to_tuned_model: str = "./models/final_model",
         tokenizer_name: str = "microsoft/phi-1_5",
         allow_real_genre: bool = False,
-        path_to_training: Optional[str] = None
+        path_to_training: Optional[str] = None,
     ):
         self.path_to_tuned_model = path_to_tuned_model
         self.tokenizer_name = tokenizer_name
@@ -26,21 +26,33 @@ class GenreGenerator:
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name)
 
     def _parse_output(self, original_output: str) -> str:
-        # TODO: try and handle more output formats? e.g. got number, genre|<stop>|
         try:
-            parsed_output = original_output.split("->")[1].replace("|<stop>|", "")
+            parsed_output = (
+                original_output.split("->")[1].replace("|<stop>|", "").strip()
+            )
             return parsed_output
         except IndexError:
-            raise ValueError(f"Invalid output, could not be parsed - {original_output}")
-        
+            try:
+                parsed_output = (
+                    original_output.split(",")[1].replace("|<stop>|", "").strip()
+                )
+                return parsed_output
+            except IndexError:
+                return original_output
+
     def _is_output_from_training(self, output: str) -> bool:
         if not self.path_to_training:
-            raise ValueError("Path to training required to validate if model produced exact match to training.")
+            raise ValueError(
+                "Path to training required to validate if model produced exact match to training."
+            )
         training_df = pd.read_csv(self.path_to_training)
-        genres_without_seed = [i.split("->")[1].replace("|<stop>|", "").strip() for i in training_df["genre"].tolist()]
+        genres_without_seed = [
+            i.split("->")[1].replace("|<stop>|", "").strip()
+            for i in training_df["genre"].tolist()
+        ]
         exact_match = output.strip() in genres_without_seed
         return exact_match
-    
+
     def _retry_with_new_seed(self, seed: Optional[int]) -> str:
         new_seed = seed + 1 if seed else random.randrange(1000)
         return self.generate(new_seed)
@@ -72,7 +84,6 @@ class GenreGenerator:
         genre = self.generate(random_seed)
         return genre
 
+
 if __name__ == "__main__":
     generator = GenreGenerator(path_to_training="./data/micro_genres.csv")
-    print(generator.generate(47))
-    print(generator())

@@ -31,15 +31,6 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Create env file
-      run: |
-        touch src/.env
-        echo REPO_ID=${{ secrets.REPO_ID }} >> src/.env
-        touch test/.env
-        echo REPO_ID=${{ secrets.REPO_ID }} >> test/.env
-    - name: Login to HuggingFace Hub
-      run: |
-        huggingface-cli login --token ${{ secrets.HF_TOKEN }} --add-to-git-credential
     - name: Test with pytest
       run: |
         coverage run -m pytest

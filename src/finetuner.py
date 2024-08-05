@@ -1,14 +1,15 @@
+import os
 import re
 from typing import Tuple
 
 import pandas as pd
 import torch
 from datasets import load_dataset
-from peft import LoraConfig, PeftModel, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-from trl import SFTConfig, SFTTrainer
-import os
 from dotenv import load_dotenv
+from peft import LoraConfig, PeftModel, get_peft_model
+from transformers import (AutoModelForCausalLM, AutoTokenizer,
+                          BitsAndBytesConfig)
+from trl import SFTConfig, SFTTrainer
 
 
 class Finetuner:
@@ -108,7 +109,7 @@ class Finetuner:
 
     def _push_model_to_hub(self):
         # NOTE: need to be logged in to HF CLI
-        self.final_merged_model.push_to_hub(repo_id=os.environ['REPO_ID'], private=True)
+        self.final_merged_model.push_to_hub(repo_id=os.environ["REPO_ID"], private=True)
 
     def run(self):
         self._load_data()
